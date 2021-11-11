@@ -15,20 +15,24 @@ import (
 func main() {
 	var wg sync.WaitGroup
 
+	freeDomains := []string{}
+
 	i := 1
 	for r := 'a'; r <= 'z'; r++ {
 		wg.Add(1)
-		go runForLetter(&wg, i, fmt.Sprintf("%c", r))
+		go runForLetter(&wg, &freeDomains, fmt.Sprintf("%c", r))
 		i++
 	}
 
 	wg.Wait()
+
+	writeLinesToFile(freeDomains)
+
 	log.Printf("Done!")
 }
 
-func runForLetter(wg *sync.WaitGroup, id int, letter string) {
+func runForLetter(wg *sync.WaitGroup, freeDomains *[]string, letter string) {
 	defer wg.Done()
-	freeDomains := []string{}
 
 	domainsToCheck := generateInput()
 
@@ -40,18 +44,16 @@ func runForLetter(wg *sync.WaitGroup, id int, letter string) {
 		}
 
 		if resp {
-			freeDomains = append(freeDomains, letter+domain+".nz")
+			*freeDomains = append(*freeDomains, letter+domain+".nz")
 		}
 	}
 
-	writeLinesToFile(letter, freeDomains)
-
-	fmt.Printf("Worker %v: Finished\n", id)
+	fmt.Printf("Worker %s: Finished\n", letter)
 }
 
 // checkDomain - True if available, error/false if not
 func checkDomain(domain string) (bool, error) {
-	time.Sleep(time.Millisecond * 100)
+	time.Sleep(time.Millisecond * 150)
 	resultRaw, err := whois.Whois(domain, "whois.srs.net.nz")
 	if err != nil {
 		return false, err
@@ -81,12 +83,12 @@ func generateInput() []string {
 	return output
 }
 
-func writeLinesToFile(letter string, str []string) {
+func writeLinesToFile(str []string) {
 	if len(str) == 0 {
 		return
 	}
 
-	file, err := os.OpenFile(letter+".char.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	file, err := os.OpenFile("3char.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 
 	if err != nil {
 		log.Fatalf("failed creating file: %s", err)
